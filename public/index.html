@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>在庫管理</title>
+<style>
+  body { font-family: system-ui, "Yu Gothic UI", sans-serif; margin: 0; background: #f4f5f7; color: #222; }
+  header { background: #2b4c7e; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  main { max-width: 800px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+  input[name=name] { flex: 1; min-width: 160px; }
+  input[type=number] { width: 90px; }
+  button { padding: 8px 14px; border: 0; border-radius: 4px; background: #2b4c7e; color: #fff; cursor: pointer; font-size: 14px; }
+  button.danger { background: #c0392b; }
+  button.sub { background: #6b7a90; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+  td.qty { white-space: nowrap; }
+  .low { color: #c0392b; font-weight: bold; }
+  #msg { min-height: 20px; color: #c0392b; margin-bottom: 8px; }
+  .empty { color: #888; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<header><h1>在庫管理</h1></header>
+<main>
+  <div id="msg"></div>
+
+  <div class="card">
+    <h3 style="margin-top:0">商品を追加</h3>
+    <form id="addForm">
+      <input name="name" placeholder="商品名" required>
+      <input name="quantity" type="number" value="0" step="1" required>
+      <button>追加</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">商品一覧</h3>
+    <table>
+      <thead><tr><th>ID</th><th>商品名</th><th>数量</th><th></th></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `エラー (${res.status})`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function showError(e) { $('#msg').textContent = e ? e.message : ''; }
+
+async function load() {
+  const items = await api('GET', '/api/products');
+  $('#list').innerHTML = items.length ? items.map((p) => `
+    <tr>
+      <td>${p.id}</td>
+      <td>${esc(p.name)}</td>
+      <td class="qty">
+        <button class="sub" data-act="dec" data-id="${p.id}" data-q="${p.quantity}">−</button>
+        <input type="number" step="1" value="${p.quantity}" data-id="${p.id}" class="${p.quantity <= 10 ? 'low' : ''}">
+        <button class="sub" data-act="inc" data-id="${p.id}" data-q="${p.quantity}">＋</button>
+        <button data-act="save" data-id="${p.id}">更新</button>
+      </td>
+      <td><button class="danger" data-act="del" data-id="${p.id}">削除</button></td>
+    </tr>`).join('') : '<tr><td colspan="4" class="empty">商品がありません</td></tr>';
+}
+
+async function run(fn) {
+  try { showError(); await fn(); await load(); } catch (e) { showError(e); }
+}
+
+$('#addForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const f = ev.target;
+  run(async () => {
+    await api('POST', '/api/products', { name: f.name.value, quantity: Number(f.quantity.value) });
+    f.reset();
+  });
+});
+
+$('#list').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  const id = b.dataset.id;
+  const q = Number(b.dataset.q);
+  if (b.dataset.act === 'del') {
+    if (!confirm('この商品を削除しますか?')) return;
+    run(() => api('DELETE', `/api/products/${id}`));
+  } else if (b.dataset.act === 'inc') {
+    run(() => api('PUT', `/api/products/${id}/quantity`, { quantity: q + 1 }));
+  } else if (b.dataset.act === 'dec') {
+    run(() => api('PUT', `/api/products/${id}/quantity`, { quantity: q - 1 })); // 0未満はAPIが400を返す
+  } else if (b.dataset.act === 'save') {
+    const v = b.parentElement.querySelector('input').value;
+    run(() => api('PUT', `/api/products/${id}/quantity`, { quantity: v === '' ? null : Number(v) }));
+  }
+});
+
+load().catch(showError);
+</script>
+</body>
+</html>
