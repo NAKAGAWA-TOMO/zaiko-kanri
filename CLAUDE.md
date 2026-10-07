@@ -5,7 +5,9 @@
 ## 進め方のルール
 - 機能追加・変更は、先に `SPEC.md` を更新してからコードを直す(順序を逆にしない)
 - 仕様にない挙動を勝手に追加しない。判断が必要なら実装前に確認する
-- 変更後は `node server.js` で起動し、画面とAPIの両方で動作を確認する
+- 変更後は `node --test "test/*.test.js"` を実行し、**全テストが通ることを確認する**(テストは別ポートでサーバーを自動起動するので、事前の起動は不要)
+- API の仕様を変えたら、`test/api.test.js` に対応するテストを追加・更新する
+- 画面を変えた場合は `node server.js` で起動し、画面でも動作を確認する
 - 作業の区切りでコミットし、GitHub (`origin/main`) に push する。コミットメッセージは英語の1行要約
 
 ## 技術的な前提(変えない)
@@ -20,7 +22,8 @@
 | `server.js` | HTTPサーバー、APIルーティング、**入力チェックはここ(API側)** |
 | `repository.js` | データ層。`server.js` は `list/get/findByName/create/delete/updateQuantity` だけに依存する |
 | `public/index.html` | 画面 |
-| `test-api.sh` | APIの呼び出し例 |
+| `test/api.test.js` | APIの自動テスト(Node標準の `node:test`) |
+| `test-api.sh` | APIの呼び出し例(curl) |
 | `SPEC.md` | 仕様書 |
 
 - データ保存を変える場合は、`repository.js` に同じメソッドを持つクラスを足し、`server.js` で差し替える。`server.js` に保存処理を直接書かない

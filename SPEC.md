@@ -12,6 +12,7 @@
 | `server.js` | HTTPサーバー、API、入力チェック |
 | `repository.js` | データ層 (リポジトリパターン)。現在はメモリ保存 |
 | `public/index.html` | 画面 (一覧・追加・数量更新・削除) |
+| `test/api.test.js` | APIの自動テスト。`node --test "test/*.test.js"` で実行(別ポートでサーバーを自動起動) |
 | `test-api.sh` | APIの呼び出し例 |
 
 ## データ
