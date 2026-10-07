@@ -102,7 +102,13 @@ $('#list').addEventListener('click', (ev) => {
   const id = b.dataset.id;
   const q = Number(b.dataset.q);
   if (b.dataset.act === 'del') {
-    if (!confirm('この商品を削除しますか?')) return;
+    // ブラウザ標準のconfirmは環境によって表示されないため、ボタン自体を2段階にする
+    if (b.dataset.armed !== '1') {
+      b.dataset.armed = '1';
+      b.textContent = '本当に削除?';
+      setTimeout(() => { b.dataset.armed = ''; b.textContent = '削除'; }, 3000);
+      return;
+    }
     run(() => api('DELETE', `/api/products/${id}`));
   } else if (b.dataset.act === 'inc') {
     run(() => api('PUT', `/api/products/${id}/quantity`, { quantity: q + 1 }));
